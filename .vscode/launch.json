@@ -1,0 +1,54 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "PowerShell: Launch Script",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "${workspaceFolder}/scripts/sample.ps1",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "PowerShell: Launch Current File",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "${file}",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "PowerShell: Interactive Session",
+            "type": "PowerShell",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "createTemporaryIntegratedConsole": true
+        },
+        {
+            "name": "PowerShell: Attach to Host Process",
+            "type": "PowerShell",
+            "request": "attach",
+            "runspaceId": 1
+        },
+        {
+            "name": "Pester: Run All Tests",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "Invoke-Pester",
+            "args": [
+                "${workspaceFolder}/tests/",
+                "-Output", "Detailed"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Pester: Run Current Test File",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "Invoke-Pester",
+            "args": [
+                "${file}",
+                "-Output", "Detailed"
+            ],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
