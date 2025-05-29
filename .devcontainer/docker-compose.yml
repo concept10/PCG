@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  powershell-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        POWERSHELL_VERSION: ${POWERSHELL_VERSION:-7.x}
+    volumes:
+      - ..:/workspace:cached
+      - powershell-extensions:/home/vscode/.vscode-server/extensions
+      - powershell-profile:/home/vscode/.config/powershell
+    environment:
+      - POWERSHELL_VERSION=${POWERSHELL_VERSION:-7.x}
+    working_dir: /workspace
+    command: sleep infinity
+    user: vscode
+
+  # Optional: Windows PowerShell compatibility container
+  # Note: This requires Windows containers
+  powershell-windows:
+    image: mcr.microsoft.com/windows/servercore:ltsc2022
+    volumes:
+      - ..:/workspace:cached
+    working_dir: /workspace
+    command: powershell.exe -Command "while ($true) { Start-Sleep 30 }"
+    profiles:
+      - windows
+
+volumes:
+  powershell-extensions:
+  powershell-profile:
