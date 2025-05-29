@@ -27,7 +27,7 @@ This devcontainer provides a complete development environment for PowerShell scr
    ```powershell
    # Run the sample script
    pwsh /workspace/scripts/sample.ps1
-   
+
    # Run tests
    pwsh -c 'Invoke-Pester /workspace/tests/'
    ```

@@ -1,6 +1,6 @@
 @{
     # Use Severity levels to specify which rules to run
-    Severity = @('Error', 'Warning', 'Information')
+    Severity     = @('Error', 'Warning', 'Information')
 
     # Specify which rules to include/exclude
     IncludeRules = @(
@@ -19,36 +19,36 @@
     )
 
     # Configure rules
-    Rules = @{
+    Rules        = @{
         PSUseConsistentIndentation = @{
-            Enable = $true
-            Kind = 'space'
+            Enable          = $true
+            Kind            = 'space'
             IndentationSize = 4
         }
 
-        PSUseConsistentWhitespace = @{
-            Enable = $true
+        PSUseConsistentWhitespace  = @{
+            Enable          = $true
             CheckInnerBrace = $true
-            CheckOpenBrace = $true
-            CheckOpenParen = $true
-            CheckOperator = $true
-            CheckPipe = $true
-            CheckSeparator = $true
+            CheckOpenBrace  = $true
+            CheckOpenParen  = $true
+            CheckOperator   = $true
+            CheckPipe       = $true
+            CheckSeparator  = $true
         }
 
-        PSUseCorrectCasing = @{
+        PSUseCorrectCasing         = @{
             Enable = $true
         }
 
-        PSProvideCommentHelp = @{
-            Enable = $true
-            ExportedOnly = $false
-            BlockComment = $true
+        PSProvideCommentHelp       = @{
+            Enable                  = $true
+            ExportedOnly            = $false
+            BlockComment            = $true
             VSCodeSnippetCorrection = $true
-            Placement = "before"
+            Placement               = 'before'
         }
 
-        PSAvoidUsingCmdletAliases = @{
+        PSAvoidUsingCmdletAliases  = @{
             allowlist = @()
         }
     }

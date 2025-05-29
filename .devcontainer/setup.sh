@@ -38,7 +38,7 @@ fi
 
 if [[ "$POWERSHELL_VERSION" == "7.x" || "$POWERSHELL_VERSION" == "latest" ]]; then
     echo "🐚 Installing PowerShell 7.x..."
-    
+
     # PowerShell 7.x is already installed via the devcontainer feature
     # Just verify it's working
     if command -v pwsh &> /dev/null; then
