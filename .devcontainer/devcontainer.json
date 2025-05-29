@@ -1,0 +1,55 @@
+{
+  "name": "PowerShell Development Environment",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  
+  // Configure tool-specific properties
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.powershell",
+        "ms-vscode.vscode-json",
+        "streetsidesoftware.code-spell-checker",
+        "redhat.vscode-yaml",
+        "ms-vscode.vscode-markdown"
+      ],
+      "settings": {
+        "powershell.powerShellDefaultVersion": "PowerShell",
+        "powershell.enableProfileLoading": false,
+        "powershell.integratedConsole.showOnStartup": false,
+        "terminal.integrated.defaultProfile.linux": "pwsh",
+        "files.defaultLanguage": "powershell"
+      }
+    }
+  },
+
+  // Features to add to the dev container
+  "features": {
+    "ghcr.io/devcontainers/features/powershell:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  // Use 'forwardPorts' to make a list of ports inside the container available locally
+  "forwardPorts": [],
+
+  // Use 'postCreateCommand' to run commands after the container is created
+  "postCreateCommand": ".devcontainer/setup.sh",
+
+  // Configure container environment
+  "containerEnv": {
+    "POWERSHELL_VERSION": "${localEnv:POWERSHELL_VERSION:7.x}"
+  },
+
+  // Mount the local file system and preserve file permissions
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+  ],
+
+  // Set the default path that VS Code should open when connecting to the container
+  "workspaceFolder": "/workspace",
+
+  // Configure tool-specific properties for development
+  "remoteUser": "vscode"
+}
