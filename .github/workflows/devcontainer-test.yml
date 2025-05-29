@@ -1,0 +1,248 @@
+name: DevContainer Build and Test
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - '.devcontainer/**'
+  pull_request:
+    branches: [ main, master, develop ]
+    paths:
+      - '.devcontainer/**'
+  workflow_dispatch:
+
+jobs:
+  test-devcontainer-build:
+    name: Test DevContainer Build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Test devcontainer build
+      uses: devcontainers/ci@v0.3
+      with:
+        imageName: pcg-powershell-dev
+        runCmd: |
+          echo "=== Testing DevContainer Setup ==="
+          
+          # Check if we're in the right directory
+          pwd
+          ls -la
+          
+          # Test PowerShell installation
+          echo "Testing PowerShell installation..."
+          pwsh --version
+          
+          # Test PowerShell basic functionality
+          echo "Testing PowerShell basic functionality..."
+          pwsh -c 'Write-Host "PowerShell is working in devcontainer!" -ForegroundColor Green'
+          pwsh -c '$PSVersionTable | Format-Table'
+          
+          # Test if required modules are installed
+          echo "Testing PowerShell modules..."
+          pwsh -c '
+            $requiredModules = @("Pester", "PSScriptAnalyzer", "platyPS")
+            $missingModules = @()
+            
+            foreach ($module in $requiredModules) {
+              try {
+                Import-Module $module -Force
+                Write-Host "✅ $module is installed and can be imported" -ForegroundColor Green
+              }
+              catch {
+                Write-Host "❌ $module is not available: $($_.Exception.Message)" -ForegroundColor Red
+                $missingModules += $module
+              }
+            }
+            
+            if ($missingModules.Count -gt 0) {
+              Write-Host "Missing modules: $($missingModules -join ", ")" -ForegroundColor Red
+              exit 1
+            } else {
+              Write-Host "All required modules are available!" -ForegroundColor Green
+            }
+          '
+          
+          # Test workspace structure
+          echo "Testing workspace structure..."
+          if [ -d "/workspace" ]; then
+            echo "✅ Workspace directory exists"
+            ls -la /workspace/
+          else
+            echo "❌ Workspace directory not found"
+            exit 1
+          fi
+          
+          # Test if sample files were created
+          echo "Testing sample files..."
+          if [ -f "/workspace/scripts/sample.ps1" ]; then
+            echo "✅ Sample script exists"
+            echo "Testing sample script execution..."
+            pwsh /workspace/scripts/sample.ps1 -Name "DevContainer Test"
+          else
+            echo "⚠️ Sample script not found (may be expected)"
+          fi
+          
+          if [ -f "/workspace/tests/sample.tests.ps1" ]; then
+            echo "✅ Sample test exists"
+            echo "Running sample tests..."
+            pwsh -c 'Invoke-Pester /workspace/tests/sample.tests.ps1 -Output Detailed'
+          else
+            echo "⚠️ Sample tests not found (may be expected)"
+          fi
+          
+          # Test VS Code configuration
+          echo "Testing VS Code configuration..."
+          if [ -f "/workspace/.vscode/settings.json" ]; then
+            echo "✅ VS Code settings found"
+            cat /workspace/.vscode/settings.json | head -10
+          else
+            echo "❌ VS Code settings not found"
+          fi
+          
+          echo "=== DevContainer test completed successfully ==="
+
+  test-different-powershell-versions:
+    name: Test Different PowerShell Versions
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        powershell_version: ["7.x", "latest"]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set PowerShell version
+      run: |
+        echo "POWERSHELL_VERSION=${{ matrix.powershell_version }}" >> .devcontainer/.env
+        cat .devcontainer/.env
+
+    - name: Test devcontainer with PowerShell ${{ matrix.powershell_version }}
+      uses: devcontainers/ci@v0.3
+      with:
+        imageName: pcg-powershell-dev-${{ matrix.powershell_version }}
+        runCmd: |
+          echo "=== Testing PowerShell ${{ matrix.powershell_version }} in DevContainer ==="
+          
+          # Check PowerShell version
+          pwsh --version
+          pwsh -c '$PSVersionTable.PSVersion'
+          
+          # Test basic functionality
+          pwsh -c 'Write-Host "Testing PowerShell ${{ matrix.powershell_version }}" -ForegroundColor Cyan'
+          
+          # Test modules
+          pwsh -c 'Get-InstalledModule | Select-Object Name, Version | Format-Table'
+          
+          echo "=== PowerShell ${{ matrix.powershell_version }} test completed ==="
+
+  test-dockerfile-build:
+    name: Test Custom Dockerfile Build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Build custom Docker image
+      run: |
+        cd .devcontainer
+        docker build -t pcg-powershell-custom:latest .
+
+    - name: Test custom Docker image
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          pcg-powershell-custom:latest \
+          bash -c "
+            echo '=== Testing Custom Docker Image ==='
+            
+            # Test PowerShell
+            pwsh --version
+            pwsh -c 'Write-Host \"Custom Docker image test\" -ForegroundColor Green'
+            
+            # Test modules
+            pwsh -c 'Get-InstalledModule | Format-Table Name, Version'
+            
+            # Test workspace
+            ls -la /workspace/
+            
+            echo '=== Custom Docker image test completed ==='
+          "
+
+  validate-configuration:
+    name: Validate Configuration Files
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Validate devcontainer.json
+      uses: devcontainers/ci@v0.3
+      with:
+        runCmd: echo "devcontainer.json is valid"
+
+    - name: Validate JSON files
+      run: |
+        echo "Validating JSON configuration files..."
+        
+        # Validate devcontainer.json
+        if [ -f ".devcontainer/devcontainer.json" ]; then
+          echo "Checking devcontainer.json syntax..."
+          # Remove comments for JSON validation
+          sed 's|//.*||g' .devcontainer/devcontainer.json | jq empty
+          echo "✅ devcontainer.json is valid"
+        fi
+        
+        # Validate VS Code settings
+        if [ -f ".vscode/settings.json" ]; then
+          echo "Checking .vscode/settings.json syntax..."
+          jq empty .vscode/settings.json
+          echo "✅ settings.json is valid"
+        fi
+        
+        # Validate launch.json
+        if [ -f ".vscode/launch.json" ]; then
+          echo "Checking .vscode/launch.json syntax..."
+          jq empty .vscode/launch.json
+          echo "✅ launch.json is valid"
+        fi
+        
+        # Validate tasks.json
+        if [ -f ".vscode/tasks.json" ]; then
+          echo "Checking .vscode/tasks.json syntax..."
+          jq empty .vscode/tasks.json
+          echo "✅ tasks.json is valid"
+        fi
+
+    - name: Validate PowerShell configuration files
+      shell: bash
+      run: |
+        # Install PowerShell for validation
+        sudo apt-get update
+        wget -q "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb"
+        sudo dpkg -i packages-microsoft-prod.deb
+        sudo apt-get update
+        sudo apt-get install -y powershell
+        
+        echo "Validating PowerShell configuration files..."
+        
+        # Validate PSScriptAnalyzer settings
+        if [ -f ".vscode/PSScriptAnalyzerSettings.psd1" ]; then
+          echo "Checking PSScriptAnalyzer settings..."
+          pwsh -c "
+            try {
+              \$settings = Import-PowerShellDataFile '.vscode/PSScriptAnalyzerSettings.psd1'
+              Write-Host '✅ PSScriptAnalyzerSettings.psd1 is valid' -ForegroundColor Green
+            }
+            catch {
+              Write-Host '❌ PSScriptAnalyzerSettings.psd1 is invalid: \$(\$_.Exception.Message)' -ForegroundColor Red
+              exit 1
+            }
+          "
+        fi

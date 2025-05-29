@@ -1,0 +1,341 @@
+name: PowerShell Quality Assurance
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+env:
+  POWERSHELL_TELEMETRY_OPTOUT: 1
+
+jobs:
+  code-quality:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup PowerShell
+      shell: bash
+      run: |
+        # Install PowerShell on Ubuntu
+        sudo apt-get update
+        wget -q "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb"
+        sudo dpkg -i packages-microsoft-prod.deb
+        sudo apt-get update
+        sudo apt-get install -y powershell
+
+    - name: Install required modules
+      shell: pwsh
+      run: |
+        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+        Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+        Install-Module -Name Pester -Force -Scope CurrentUser
+        Install-Module -Name platyPS -Force -Scope CurrentUser
+
+    - name: Run PSScriptAnalyzer
+      shell: pwsh
+      run: |
+        Write-Host "🔍 Running PSScriptAnalyzer..." -ForegroundColor Blue
+        
+        $scriptFiles = Get-ChildItem -Path "." -Filter "*.ps1" -Recurse -Exclude "*.Tests.ps1"
+        $allIssues = @()
+        
+        foreach ($file in $scriptFiles) {
+          Write-Host "Analyzing: $($file.FullName)" -ForegroundColor Gray
+          
+          $issues = Invoke-ScriptAnalyzer -Path $file.FullName -Severity @('Error', 'Warning', 'Information')
+          
+          if ($issues) {
+            $allIssues += $issues
+            
+            foreach ($issue in $issues) {
+              $color = switch ($issue.Severity) {
+                'Error' { 'Red' }
+                'Warning' { 'Yellow' }
+                'Information' { 'Cyan' }
+              }
+              
+              Write-Host "  [$($issue.Severity)] $($issue.RuleName)" -ForegroundColor $color
+              Write-Host "    $($issue.Message)" -ForegroundColor Gray
+              Write-Host "    Line $($issue.Line), Column $($issue.Column)" -ForegroundColor Gray
+            }
+          }
+        }
+        
+        # Summary
+        Write-Host "`n📊 Analysis Summary:" -ForegroundColor Blue
+        $errorCount = ($allIssues | Where-Object Severity -eq 'Error').Count
+        $warningCount = ($allIssues | Where-Object Severity -eq 'Warning').Count
+        $infoCount = ($allIssues | Where-Object Severity -eq 'Information').Count
+        
+        Write-Host "  Errors: $errorCount" -ForegroundColor Red
+        Write-Host "  Warnings: $warningCount" -ForegroundColor Yellow
+        Write-Host "  Information: $infoCount" -ForegroundColor Cyan
+        
+        # Create annotations for GitHub
+        foreach ($issue in $allIssues) {
+          $level = switch ($issue.Severity) {
+            'Error' { 'error' }
+            'Warning' { 'warning' }
+            'Information' { 'notice' }
+          }
+          
+          $relativePath = $issue.ScriptName -replace [regex]::Escape($PWD), '.'
+          Write-Host "::$level file=$relativePath,line=$($issue.Line),col=$($issue.Column)::$($issue.RuleName): $($issue.Message)"
+        }
+        
+        # Fail if there are errors
+        if ($errorCount -gt 0) {
+          Write-Host "❌ Code quality check failed due to $errorCount error(s)" -ForegroundColor Red
+          exit 1
+        } else {
+          Write-Host "✅ Code quality check passed!" -ForegroundColor Green
+        }
+
+    - name: Generate analysis report
+      shell: pwsh
+      run: |
+        Write-Host "📄 Generating analysis report..." -ForegroundColor Blue
+          $reportPath = "analysis-report.md"
+        $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC"
+        
+        $report = "# PowerShell Code Analysis Report`n`n**Generated:** $timestamp`n`n## Summary`n"
+        
+        $scriptFiles = Get-ChildItem -Path "." -Filter "*.ps1" -Recurse -Exclude "*.Tests.ps1"
+        $allIssues = @()
+        
+        foreach ($file in $scriptFiles) {
+          $issues = Invoke-ScriptAnalyzer -Path $file.FullName -Severity @('Error', 'Warning', 'Information')
+          $allIssues += $issues
+        }
+          $errorCount = ($allIssues | Where-Object Severity -eq 'Error').Count
+        $warningCount = ($allIssues | Where-Object Severity -eq 'Warning').Count
+        $infoCount = ($allIssues | Where-Object Severity -eq 'Information').Count
+        
+        $report += "`n- **Files analyzed:** $($scriptFiles.Count)`n"
+        $report += "- **Total issues:** $($allIssues.Count)`n"
+        $report += "- **Errors:** $errorCount`n"
+        $report += "- **Warnings:** $warningCount`n"
+        $report += "- **Information:** $infoCount`n`n"
+        $report += "## Issues by File`n"
+        
+        $fileGroups = $allIssues | Group-Object ScriptName
+        foreach ($group in $fileGroups) {
+          $relativePath = $group.Name -replace [regex]::Escape($PWD), '.'
+          $report += "`n### $relativePath`n`n"
+          
+          foreach ($issue in $group.Group) {
+            $report += "- **[$($issue.Severity)]** $($issue.RuleName) (Line $($issue.Line)): $($issue.Message)`n"
+          }
+        }
+        
+        Set-Content -Path $reportPath -Value $report
+        Write-Host "Report saved to: $reportPath" -ForegroundColor Green
+
+    - name: Upload analysis report
+      uses: actions/upload-artifact@v4
+      with:
+        name: analysis-report
+        path: analysis-report.md
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup PowerShell
+      uses: actions/setup-powershell@v1
+      with:
+        powershell-version: '7.4'
+
+    - name: Install PSScriptAnalyzer
+      shell: pwsh
+      run: |
+        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+        Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+
+    - name: Run security-focused analysis
+      shell: pwsh
+      run: |
+        Write-Host "🔒 Running security analysis..." -ForegroundColor Blue
+        
+        $securityRules = @(
+          'PSAvoidUsingConvertToSecureStringWithPlainText',
+          'PSAvoidUsingUsernameAndPasswordParams',
+          'PSAvoidUsingPlainTextForPassword',
+          'PSUsePSCredentialType',
+          'PSAvoidUsingInvokeExpression',
+          'PSAvoidUsingWMICmdlet',
+          'PSUseShouldProcessForStateChangingFunctions'
+        )
+        
+        $scriptFiles = Get-ChildItem -Path "." -Filter "*.ps1" -Recurse
+        $securityIssues = @()
+        
+        foreach ($file in $scriptFiles) {
+          $issues = Invoke-ScriptAnalyzer -Path $file.FullName -IncludeRule $securityRules
+          
+          if ($issues) {
+            $securityIssues += $issues
+            
+            Write-Host "🚨 Security issues in $($file.Name):" -ForegroundColor Red
+            foreach ($issue in $issues) {
+              Write-Host "  $($issue.RuleName): $($issue.Message)" -ForegroundColor Yellow
+              Write-Host "    Line $($issue.Line): $($issue.ScriptName)" -ForegroundColor Gray
+            }
+          }
+        }
+        
+        if ($securityIssues.Count -eq 0) {
+          Write-Host "✅ No security issues found!" -ForegroundColor Green
+        } else {
+          Write-Host "⚠️ Found $($securityIssues.Count) security issue(s)" -ForegroundColor Yellow
+            # Create security report
+          $securityReport = "# Security Analysis Report`n`n**Generated:** $(Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC")`n`n## Issues Found: $($securityIssues.Count)`n`n"
+          
+          foreach ($issue in $securityIssues) {
+            $securityReport += "### $($issue.RuleName)`n`n"
+            $securityReport += "- **File:** $($issue.ScriptName)`n"
+            $securityReport += "- **Line:** $($issue.Line)`n" 
+            $securityReport += "- **Severity:** $($issue.Severity)`n"
+            $securityReport += "- **Message:** $($issue.Message)`n`n"
+          }
+          
+          Set-Content -Path "security-report.md" -Value $securityReport
+        }
+
+    - name: Upload security report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-report
+        path: security-report.md
+
+  performance-test:
+    name: Performance Testing
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup PowerShell
+      uses: actions/setup-powershell@v1
+      with:
+        powershell-version: '7.4'
+
+    - name: Run performance tests
+      shell: pwsh
+      run: |
+        Write-Host "🚀 Running performance tests..." -ForegroundColor Blue
+        
+        # Test script loading performance
+        $scriptFiles = Get-ChildItem -Path "." -Filter "*.ps1" -Recurse
+        $loadTimes = @()
+        
+        foreach ($file in $scriptFiles) {
+          Write-Host "Testing load time for: $($file.Name)" -ForegroundColor Gray
+          
+          $loadTime = Measure-Command {
+            try {
+              $content = Get-Content $file.FullName -Raw
+              $scriptBlock = [ScriptBlock]::Create($content)
+            }
+            catch {
+              Write-Warning "Could not load $($file.Name): $($_.Exception.Message)"
+            }
+          }
+          
+          $loadTimes += [PSCustomObject]@{
+            File = $file.Name
+            LoadTimeMs = $loadTime.TotalMilliseconds
+          }
+        }
+        
+        # Report performance
+        Write-Host "`n📊 Performance Results:" -ForegroundColor Blue
+        $loadTimes | Sort-Object LoadTimeMs -Descending | Format-Table -AutoSize
+        
+        $avgLoadTime = ($loadTimes | Measure-Object LoadTimeMs -Average).Average
+        $maxLoadTime = ($loadTimes | Measure-Object LoadTimeMs -Maximum).Maximum
+        
+        Write-Host "Average load time: $([math]::Round($avgLoadTime, 2))ms" -ForegroundColor Cyan
+        Write-Host "Maximum load time: $([math]::Round($maxLoadTime, 2))ms" -ForegroundColor Cyan
+        
+        # Warn if any script takes too long to load
+        $slowScripts = $loadTimes | Where-Object LoadTimeMs -gt 1000
+        if ($slowScripts) {
+          Write-Host "⚠️ Slow loading scripts (>1000ms):" -ForegroundColor Yellow
+          $slowScripts | ForEach-Object {
+            Write-Host "  $($_.File): $([math]::Round($_.LoadTimeMs, 2))ms" -ForegroundColor Yellow
+          }
+        }
+
+  documentation-check:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup PowerShell
+      uses: actions/setup-powershell@v1
+      with:
+        powershell-version: '7.4'
+
+    - name: Check documentation
+      shell: pwsh
+      run: |
+        Write-Host "📚 Checking documentation..." -ForegroundColor Blue
+        
+        $issues = @()
+        
+        # Check for README files
+        if (-not (Test-Path "README.md")) {
+          $issues += "Missing main README.md file"
+        }
+        
+        if (-not (Test-Path ".devcontainer/README.md")) {
+          $issues += "Missing devcontainer README.md file"
+        }
+        
+        # Check PowerShell scripts for comment-based help
+        $scriptFiles = Get-ChildItem -Path "." -Filter "*.ps1" -Recurse -Exclude "*.Tests.ps1"
+        
+        foreach ($file in $scriptFiles) {
+          $content = Get-Content $file.FullName -Raw
+          
+          # Check for comment-based help
+          if ($content -notmatch '\.SYNOPSIS|\.DESCRIPTION|\.EXAMPLE') {
+            $issues += "Script $($file.Name) is missing comment-based help"
+          }
+          
+          # Check for parameter documentation
+          if ($content -match 'param\s*\(' -and $content -notmatch '\.PARAMETER') {
+            $issues += "Script $($file.Name) has parameters but no parameter documentation"
+          }
+        }
+        
+        # Report issues
+        if ($issues.Count -eq 0) {
+          Write-Host "✅ Documentation check passed!" -ForegroundColor Green
+        } else {
+          Write-Host "📝 Documentation issues found:" -ForegroundColor Yellow
+          $issues | ForEach-Object {
+            Write-Host "  - $_" -ForegroundColor Yellow
+          }
+          
+          # Don't fail for documentation issues, just warn
+          Write-Host "ℹ️ Consider improving documentation for better maintainability" -ForegroundColor Cyan
+        }
