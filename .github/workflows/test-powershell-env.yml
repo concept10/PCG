@@ -23,7 +23,7 @@ jobs:
   test-devcontainer:
     name: Test DevContainer Setup
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -35,13 +35,13 @@ jobs:
         runCmd: |
           # Verify PowerShell installation
           pwsh --version
-          
+
           # Test PowerShell functionality
           pwsh -c 'Write-Host "PowerShell is working!" -ForegroundColor Green'
-          
+
           # Verify required modules are installed
           pwsh -c 'Get-InstalledModule | Where-Object {$_.Name -in @("Pester", "PSScriptAnalyzer", "platyPS")} | Format-Table Name, Version'
-          
+
           # Test sample script creation and execution
           if [ -f "/workspace/scripts/sample.ps1" ]; then
             echo "Sample script exists, testing execution..."
@@ -49,40 +49,40 @@ jobs:
           else
             echo "Sample script not found, this may be expected"
           fi
-          
+
           # Test Pester installation
           pwsh -c 'Import-Module Pester -Force; Get-Module Pester'
-          
+
           # Test PSScriptAnalyzer installation
           pwsh -c 'Import-Module PSScriptAnalyzer -Force; Get-Module PSScriptAnalyzer'
 
   test-powershell-scripts:
     name: Test PowerShell Scripts
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      
+
     - name: Install PowerShell
       shell: bash
       run: |
         # Update package lists
         sudo apt-get update
-        
+
         # Install dependencies
         sudo apt-get install -y wget apt-transport-https software-properties-common
-        
+
         # Download Microsoft signing key and repository
         wget -q "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb"
         sudo dpkg -i packages-microsoft-prod.deb
-        
+
         # Update package lists with Microsoft repository
         sudo apt-get update
-        
+
         # Install PowerShell
         sudo apt-get install -y powershell
-        
+
         # Verify installation
         pwsh --version
 
@@ -98,13 +98,13 @@ jobs:
       shell: pwsh
       run: |
         Write-Host "Testing PowerShell script syntax..." -ForegroundColor Blue
-        
+
         $scriptFiles = Get-ChildItem -Path "." -Filter "*.ps1" -Recurse
         $errors = @()
-        
+
         foreach ($script in $scriptFiles) {
           Write-Host "Checking syntax of: $($script.FullName)" -ForegroundColor Gray
-          
+
           try {
             $null = [System.Management.Automation.PSParser]::Tokenize((Get-Content $script.FullName -Raw), [ref]$null)
             Write-Host "✅ $($script.Name) - Syntax OK" -ForegroundColor Green
@@ -114,7 +114,7 @@ jobs:
             $errors += $script.FullName
           }
         }
-        
+
         if ($errors.Count -gt 0) {
           Write-Host "Syntax errors found in the following files:" -ForegroundColor Red
           $errors | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
@@ -127,15 +127,15 @@ jobs:
       shell: pwsh
       run: |
         Write-Host "Running PSScriptAnalyzer..." -ForegroundColor Blue
-        
+
         $scriptFiles = Get-ChildItem -Path "." -Filter "*.ps1" -Recurse
         $totalIssues = 0
-        
+
         foreach ($script in $scriptFiles) {
           Write-Host "Analyzing: $($script.FullName)" -ForegroundColor Gray
-          
+
           $issues = Invoke-ScriptAnalyzer -Path $script.FullName -Severity @('Error', 'Warning')
-          
+
           if ($issues) {
             Write-Host "Issues found in $($script.Name):" -ForegroundColor Yellow
             $issues | ForEach-Object {
@@ -148,14 +148,14 @@ jobs:
             Write-Host "✅ $($script.Name) - No issues found" -ForegroundColor Green
           }
         }
-        
+
         Write-Host "PSScriptAnalyzer scan complete. Total issues: $totalIssues" -ForegroundColor Blue
-        
+
         # Don't fail the build for warnings, only for errors
         $errors = Get-ChildItem -Path "." -Filter "*.ps1" -Recurse | ForEach-Object {
           Invoke-ScriptAnalyzer -Path $_.FullName -Severity Error
         }
-        
+
         if ($errors) {
           Write-Host "❌ PSScriptAnalyzer found errors that must be fixed!" -ForegroundColor Red
           exit 1
@@ -165,20 +165,20 @@ jobs:
       shell: pwsh
       run: |
         Write-Host "Testing execution of existing PowerShell scripts..." -ForegroundColor Blue
-        
+
         # Test the bin directory scripts
         if (Test-Path "bin") {
           $binScripts = Get-ChildItem -Path "bin" -Filter "*.ps1"
-          
+
           foreach ($script in $binScripts) {
             Write-Host "Testing script: $($script.Name)" -ForegroundColor Gray
-            
+
             try {
               # Try to validate the script without executing it fully
               # This is a basic test to ensure the script can be loaded
               $scriptContent = Get-Content $script.FullName -Raw
               $scriptBlock = [ScriptBlock]::Create($scriptContent)
-              
+
               if ($scriptBlock) {
                 Write-Host "✅ $($script.Name) - Can be loaded as script block" -ForegroundColor Green
               }
@@ -192,11 +192,11 @@ jobs:
   test-pester-framework:
     name: Test Pester Framework
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      
+
     - name: Setup PowerShell and Pester
       shell: bash
       run: |
@@ -206,7 +206,7 @@ jobs:
         sudo dpkg -i packages-microsoft-prod.deb
         sudo apt-get update
         sudo apt-get install -y powershell
-        
+
         # Install Pester
         pwsh -c "Set-PSRepository -Name PSGallery -InstallationPolicy Trusted; Install-Module -Name Pester -Force -Scope CurrentUser"
 
@@ -214,12 +214,12 @@ jobs:
       shell: pwsh
       run: |
         Write-Host "Creating sample Pester tests..." -ForegroundColor Blue
-        
+
         # Create tests directory if it doesn't exist
         if (-not (Test-Path "tests")) {
           New-Item -ItemType Directory -Path "tests" -Force
         }
-        
+
         # Create a basic test file
         $testContent = @'
 Describe "PowerShell Environment Tests" {
@@ -249,20 +249,20 @@ Describe "PowerShell Environment Tests" {
     }
 }
 '@
-        
+
         Set-Content -Path "tests/Environment.Tests.ps1" -Value $testContent
-        
+
         Write-Host "Running Pester tests..." -ForegroundColor Blue
-        
+
         # Run the tests
         $testResults = Invoke-Pester -Path "tests" -PassThru
-        
+
         Write-Host "Test Results:" -ForegroundColor Blue
         Write-Host "  Total: $($testResults.TotalCount)" -ForegroundColor Gray
         Write-Host "  Passed: $($testResults.PassedCount)" -ForegroundColor Green
         Write-Host "  Failed: $($testResults.FailedCount)" -ForegroundColor Red
         Write-Host "  Skipped: $($testResults.SkippedCount)" -ForegroundColor Yellow
-        
+
         if ($testResults.FailedCount -gt 0) {
           Write-Host "❌ Some tests failed!" -ForegroundColor Red
           exit 1
@@ -277,34 +277,34 @@ Describe "PowerShell Environment Tests" {
         os: [ubuntu-latest, windows-latest, macos-latest]
         powershell-version: ['7.2', '7.3', '7.4']
     runs-on: ${{ matrix.os }}
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      
+
     - name: Install PowerShell ${{ matrix.powershell-version }}
       uses: actions/setup-powershell@v1
       with:
         powershell-version: ${{ matrix.powershell-version }}
-        
+
     - name: Verify PowerShell installation
       shell: pwsh
       run: |
         Write-Host "PowerShell Version: $($PSVersionTable.PSVersion)" -ForegroundColor Green
         Write-Host "Platform: $($PSVersionTable.Platform)" -ForegroundColor Green
         Write-Host "OS: $($PSVersionTable.OS)" -ForegroundColor Green
-        
+
     - name: Test basic PowerShell functionality
       shell: pwsh
       run: |
         # Test basic cmdlets
         Get-Date | Write-Host
         Get-Location | Write-Host
-        
+
         # Test variable assignment
         $testVar = "Cross-platform test successful!"
         Write-Host $testVar -ForegroundColor Green
-        
+
         # Test file operations
         "Test content" | Out-File -FilePath "test.txt"
         $content = Get-Content "test.txt"
@@ -314,7 +314,7 @@ Describe "PowerShell Environment Tests" {
           Write-Host "❌ File operations failed" -ForegroundColor Red
           exit 1
         }
-        
+
         # Clean up
         Remove-Item "test.txt" -Force
 
@@ -322,10 +322,10 @@ Describe "PowerShell Environment Tests" {
       shell: pwsh
       run: |
         Write-Host "Testing repository scripts on ${{ matrix.os }} with PowerShell ${{ matrix.powershell-version }}" -ForegroundColor Blue
-        
+
         # Test syntax of all PowerShell scripts
         $scriptFiles = Get-ChildItem -Path "." -Filter "*.ps1" -Recurse
-        
+
         foreach ($script in $scriptFiles) {
           try {
             $null = [System.Management.Automation.PSParser]::Tokenize((Get-Content $script.FullName -Raw), [ref]$null)
