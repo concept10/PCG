@@ -1,4 +1,4 @@
-# 🔍 Examining Windows Installer Files (.exe)
+# Examining Windows Installer Files (.exe)
 
 This guide helps you inspect and analyze Windows `.exe` installer files, including those made with Inno Setup, NSIS, or wrapped MSI files.
 
@@ -8,12 +8,12 @@ This guide helps you inspect and analyze Windows `.exe` installer files, includi
 
 Before extracting, identify what type of installer you're dealing with.
 
-### ✅ Use `trid`
+### Use `trid`
 ```bash
 trid installer.exe
 ```
 
-### ✅ Use `PEiD` or `Detect It Easy (DIE)`
+### Use `PEiD` or `Detect It Easy (DIE)`
 - [PEiD](https://www.aldeid.com/wiki/PEiD) — Detects packers/installers.
 - [DIE](https://ntinfo.biz) — Modern alternative for file type detection.
 
@@ -23,20 +23,20 @@ trid installer.exe
 
 Once identified, extract contents using the right tools:
 
-### 📦 Inno Setup
+### Inno Setup
 ```bash
 innounp -x installer.exe
 ```
 - Tool: [InnoUnp](https://github.com/dscharrer/innoextract)
 
-### 📦 NSIS (Nullsoft)
+### NSIS (Nullsoft)
 ```bash
 7z x installer.exe
 ```
 - Tool: [NSIS](https://nsis.sourceforge.io/)
 - `7-Zip` often works for extraction.
 
-### 📦 MSI-Wrapped EXE
+### MSI-Wrapped EXE
 Try:
 ```bash
 installer.exe /extract <path>
@@ -78,7 +78,7 @@ strings installer.exe | more
 
 ---
 
-## 🧰 Summary Table
+## Summary Table
 
 | Tool                | Use Case                                 |
 |---------------------|-------------------------------------------|
@@ -92,5 +92,5 @@ strings installer.exe | more
 
 ---
 
-## 📁 Need Help?
+## Need Help?
 If you have a specific `.exe` file, I can help walk through it step-by-step.
