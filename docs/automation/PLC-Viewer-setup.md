@@ -130,6 +130,29 @@ Copy-Item -Path "C:\Builds\PLCViewer\default-config.xml" -Destination "C:\Progra
 
 - For detailed, version-specific install switches, VM compatibility, and exact file/registry names, consult AVEVA product documentation and release notes for your PLC Viewer version.
 
+16) Document sources and references
+
+- **AVEVA Product Documentation Center:** The primary source for installers, release notes, compatibility matrices, and step-by-step install guides. Search for "PLC Viewer" or "OMI" within AVEVA's documentation site or product pages. Example starting point: `https://www.aveva.com/`.
+- **AVEVA Support / Knowledge Base:** Use the AVEVA support portal and knowledge base for hotfixes, KB articles, and product-specific guidance (license configuration, known issues, VM recommendations).
+- **Release Notes & Installation Guides:** Always consult the release notes and the installation guide that comes with the exact installer you downloaded — these list prerequisites, supported OS versions, required runtimes, and documented silent-install switches.
+- **Installer Readme / Package Contents:** Inspect the installer package (MSI or EXE) for an embedded README or PDF. Tools like 7-Zip (for EXE/NSIS wrappers) or `lessmsi` (for MSI contents) can reveal readme files and MSI tables.
+- **MSI Tables / Orca:** For MSI-based installers, open the MSI with Orca (from the Windows SDK) or an MSI inspector to view public properties, custom actions, and supported command-line options.
+- **Vendor Integration Docs (OPC / PLC vendors):** When configuring connectivity (OPC UA/DA, vendor drivers), consult the PLC vendor's documentation (Rockwell, Siemens, etc.) and your OPC server vendor for recommended settings and security guidance.
+- **Internal Repositories / IT SOPs:** If your organization maintains an internal software repository or runbooks, match the AVEVA docs to your internal packaging notes (installer filenames, pre-installed redistributables, accepted configuration templates).
+- **Community & Forums:** AVEVA community forums, user groups, and third-party operational technology (OT) forums can provide practical tips (DCOM settings, common pitfalls). Treat community advice as supplementary and verify with vendor docs.
+
+Practical search tips
+
+- Search the AVEVA site for the exact product name and the word "install" or "release notes" (for example: `"PLC Viewer" install guide release notes site:aveva.com`).
+- Open downloaded installers in a VM first and capture the embedded readme or release-notes PDF before wide deployment.
+- When you need silent install switches, look for an MSI in the EXE (7-Zip) or inspect product documentation — many vendors list `/qn`, `/quiet`, or `/S` options, but exact options are product-specific.
+
+Where I'll look if you want me to fetch specifics
+
+- AVEVA product pages and support portal for the PLC Viewer installer and release notes.
+- Installer package contents (MSI/EXE) to extract readme files and confirm silent install options.
+- AVEVA Knowledge Base for any PLC Viewer-specific KB articles about licensing, connectivity, and known issues.
+
 15) Appendix — checklist (quick)
 
 - [ ] Downloaded installer and verified checksum
