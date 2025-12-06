@@ -5,19 +5,19 @@
 
 set -e
 
-echo "🚀 Setting up PowerShell development environment..."
+echo "Setting up PowerShell development environment..."
 
 # Get PowerShell version from environment variable (default to 7.x)
 POWERSHELL_VERSION=${POWERSHELL_VERSION:-"7.x"}
 
-echo "📋 PowerShell version requested: $POWERSHELL_VERSION"
+echo "PowerShell version requested: $POWERSHELL_VERSION"
 
 # Update package lists
-echo "📦 Updating package lists..."
+echo "Updating package lists..."
 sudo apt-get update
 
 # Install common development tools
-echo "🔧 Installing development tools..."
+echo "Installing development tools..."
 sudo apt-get install -y \
     curl \
     wget \
@@ -30,14 +30,14 @@ sudo apt-get install -y \
 
 # Install PowerShell based on version
 if [[ "$POWERSHELL_VERSION" == "5.x" ]]; then
-    echo "🐚 Setting up PowerShell 5.x compatibility environment..."
-    echo "⚠️  Note: PowerShell 5.x is Windows-specific. Installing PowerShell 7.x for cross-platform compatibility."
-    echo "⚠️  Use Windows PowerShell ISE or VS Code with PowerShell extension for 5.x development."
+    echo "Setting up PowerShell 5.x compatibility environment..."
+    echo "Note: PowerShell 5.x is Windows-specific. Installing PowerShell 7.x for cross-platform compatibility."
+    echo "Use Windows PowerShell ISE or VS Code with PowerShell extension for 5.x development."
     POWERSHELL_VERSION="7.x"
 fi
 
 if [[ "$POWERSHELL_VERSION" == "7.x" || "$POWERSHELL_VERSION" == "latest" ]]; then
-    echo "🐚 Installing PowerShell 7.x..."
+    echo "Installing PowerShell 7.x..."
 
     # PowerShell 7.x is already installed via the devcontainer feature
     # Just verify it's working
@@ -51,7 +51,7 @@ if [[ "$POWERSHELL_VERSION" == "7.x" || "$POWERSHELL_VERSION" == "latest" ]]; th
 fi
 
 # Install PowerShell modules commonly used in development
-echo "📚 Installing common PowerShell modules..."
+echo "Installing common PowerShell modules..."
 pwsh -c "
     Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
     Install-Module -Name Pester -Force -Scope AllUsers
@@ -61,7 +61,7 @@ pwsh -c "
 "
 
 # Create PowerShell profile directory
-echo "📁 Creating PowerShell profile directory..."
+echo "Creating PowerShell profile directory..."
 pwsh -c "
     if (!(Test-Path -Path \$PROFILE)) {
         New-Item -ItemType File -Path \$PROFILE -Force
@@ -70,17 +70,17 @@ pwsh -c "
 "
 
 # Set up git configuration (if not already configured)
-echo "🔧 Configuring git..."
+echo "Configuring git..."
 if ! git config --global user.name > /dev/null 2>&1; then
-    echo "ℹ️  Git user.name not configured. You may want to set it with: git config --global user.name 'Your Name'"
+    echo "Git user.name not configured. You may want to set it with: git config --global user.name 'Your Name'"
 fi
 
 if ! git config --global user.email > /dev/null 2>&1; then
-    echo "ℹ️  Git user.email not configured. You may want to set it with: git config --global user.email 'your.email@example.com'"
+    echo "Git user.email not configured. You may want to set it with: git config --global user.email 'your.email@example.com'"
 fi
 
 # Create workspace directories
-echo "📁 Setting up workspace structure..."
+echo "Setting up workspace structure..."
 mkdir -p /workspace/{scripts,modules,tests,docs,tools}
 
 # Create sample PowerShell script for testing
@@ -163,13 +163,13 @@ Describe "Sample PowerShell Tests" {
 }
 EOF
 
-echo "✅ PowerShell development environment setup complete!"
+echo "PowerShell development environment setup complete!"
 echo ""
-echo "🎯 Next steps:"
+echo "Next steps:"
 echo "1. Open VS Code and install the PowerShell extension if not already installed"
 echo "2. Test the environment by running: pwsh /workspace/scripts/sample.ps1"
 echo "3. Run tests with: pwsh -c 'Invoke-Pester /workspace/tests/'"
 echo "4. Start developing your PowerShell scripts in the /workspace directory"
 echo ""
-echo "📚 Installed PowerShell modules:"
+echo "Installed PowerShell modules:"
 pwsh -c "Get-InstalledModule | Select-Object Name, Version | Format-Table"
